@@ -1,0 +1,10 @@
+portfolio,scenario,estimated_price_impact
+equal_weight,parallel_up_100bp,-0.07200000000000001
+equal_weight,bear_steepener,-0.07540000000000001
+equal_weight,credit_widening,-0.0166
+minimum_volatility,parallel_up_100bp,-0.03843849023428416
+minimum_volatility,bear_steepener,-0.030420112176768106
+minimum_volatility,credit_widening,-0.010994474748981286
+maximum_sharpe,parallel_up_100bp,-0.03995660898629931
+maximum_sharpe,bear_steepener,-0.03626556279830356
+maximum_sharpe,credit_widening,-0.014466307445372069

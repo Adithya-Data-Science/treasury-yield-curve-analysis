@@ -1,0 +1,16 @@
+{
+  "price_start": "2010-01-31",
+  "price_end": "2026-08-31",
+  "training_months": 107,
+  "test_months": 92,
+  "test_start": "2019-01-31",
+  "test_end": "2026-08-31",
+  "assets": [
+    "SHY",
+    "IEF",
+    "TLT",
+    "LQD",
+    "HYG"
+  ],
+  "benchmark": "AGG"
+}
