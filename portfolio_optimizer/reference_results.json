@@ -1,66 +1,21 @@
 {
-  "status": "illustrative_client_scenario",
-  "assumptions": {
-    "assets": [
-      "Short Treasury",
-      "Intermediate Treasury",
-      "TIPS",
-      "IG Credit",
-      "High Yield"
-    ],
-    "expected_returns": [
-      0.035,
-      0.045,
-      0.043,
-      0.055,
-      0.068
-    ],
-    "volatilities": [
-      0.025,
-      0.06,
-      0.055,
-      0.075,
-      0.12
-    ],
-    "risk_free_rate": 0.03,
-    "maximum_asset_weight": 0.45
+  "design": {
+    "assets": ["SHY", "IEF", "TLT", "LQD", "HYG"],
+    "benchmark": "LQD",
+    "history": "2010-01-31 to 2025-12-31",
+    "training_window_months": 60,
+    "rebalance_frequency_months": 12,
+    "maximum_asset_weight": 0.45,
+    "transaction_cost_bps": 10
   },
-  "portfolios": {
-    "equal_weight": {
-      "weights": {
-        "Short Treasury": 0.2,
-        "Intermediate Treasury": 0.2,
-        "TIPS": 0.2,
-        "IG Credit": 0.2,
-        "High Yield": 0.2
-      },
-      "expected_return": 0.0492,
-      "volatility": 0.04807390144350675,
-      "sharpe": 0.3993851013436587
-    },
-    "minimum_volatility": {
-      "weights": {
-        "Short Treasury": 0.45,
-        "Intermediate Treasury": 0.08242539789011559,
-        "TIPS": 0.33862111437613307,
-        "IG Credit": 0.07528622752042798,
-        "High Yield": 0.05366726021332326
-      },
-      "expected_return": 0.04180996703135845,
-      "volatility": 0.034076819206563476,
-      "sharpe": 0.3465689376631652
-    },
-    "maximum_sharpe": {
-      "weights": {
-        "Short Treasury": 0.34225811494757363,
-        "Intermediate Treasury": 0.09010641893491969,
-        "TIPS": 0.2158771319790552,
-        "IG Credit": 0.15031498534805543,
-        "High Yield": 0.2014433487903961
-      },
-      "expected_return": 0.047282011462225826,
-      "volatility": 0.04303263006991315,
-      "sharpe": 0.4016024917405358
-    }
+  "out_of_sample": {
+    "months": 131,
+    "annualized_return": 0.020160918031178143,
+    "annualized_volatility": 0.036500344558968376,
+    "tracking_error_vs_lqd": 0.0483847955721777,
+    "information_ratio_vs_lqd": -0.13801681325671847,
+    "maximum_drawdown": -0.11206137482297729,
+    "average_annual_turnover": 0.14595634413060996,
+    "annual_modeled_transaction_cost": 0.00014595634413060995
   }
 }
