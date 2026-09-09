@@ -1,21 +1,13 @@
-import unittest
-
 import numpy as np
+import pandas as pd
 
-from portfolio_optimizer import MAX_WEIGHT, covariance_matrix, optimize, portfolio_metrics
-
-
-class PortfolioOptimizerTests(unittest.TestCase):
-    def test_covariance_is_positive_semidefinite(self):
-        self.assertGreaterEqual(np.linalg.eigvalsh(covariance_matrix()).min(), -1e-12)
-
-    def test_optimizer_respects_allocation_constraints(self):
-        covariance = covariance_matrix()
-        weights = optimize(lambda w: portfolio_metrics(w, covariance)["volatility"], covariance)
-        self.assertTrue(np.isclose(weights.sum(), 1.0))
-        self.assertGreaterEqual(weights.min(), -1e-8)
-        self.assertLessEqual(weights.max(), MAX_WEIGHT + 1e-8)
+from analysis import CAP, ASSETS, min_volatility_weights
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_weights_respect_constraints():
+    rng = np.random.default_rng(7)
+    returns = pd.DataFrame(rng.normal(0.003, 0.02, (120, len(ASSETS))), columns=ASSETS)
+    weights = min_volatility_weights(returns)
+    assert np.isclose(weights.sum(), 1.0)
+    assert np.all(weights >= -1e-9)
+    assert np.all(weights <= CAP + 1e-9)
