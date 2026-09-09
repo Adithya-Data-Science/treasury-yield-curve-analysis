@@ -1,79 +1,104 @@
-from __future__ import annotations
+"""Walk-forward fixed-income ETF portfolio study.
 
-import json
+Uses month-end adjusted-price series for SHY, IEF, TLT, LQD, and HYG.
+The committed data are a static research snapshot; see README for provenance.
+"""
+
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from scipy.optimize import minimize
 
-ROOT = Path(__file__).resolve().parent
-
-ASSETS = ["Short Treasury", "Intermediate Treasury", "TIPS", "IG Credit", "High Yield"]
-EXPECTED_RETURNS = np.array([0.035, 0.045, 0.043, 0.055, 0.068])
-VOLATILITIES = np.array([0.025, 0.060, 0.055, 0.075, 0.120])
-CORRELATION = np.array([
-    [1.00, 0.65, 0.45, 0.25, 0.05],
-    [0.65, 1.00, 0.60, 0.45, 0.15],
-    [0.45, 0.60, 1.00, 0.35, 0.10],
-    [0.25, 0.45, 0.35, 1.00, 0.65],
-    [0.05, 0.15, 0.10, 0.65, 1.00],
-])
-RISK_FREE = 0.03
-MAX_WEIGHT = 0.45
+ASSETS = ["SHY", "IEF", "TLT", "LQD", "HYG"]
+CAP = 0.45
+TRAIN_MONTHS = 60
+REBALANCE_MONTHS = 12
+TRADING_COST = 0.001
+DATA = Path(__file__).parent / "data" / "monthly_adjusted_prices.csv"
+OUTPUT = Path(__file__).parent / "outputs"
 
 
-def covariance_matrix() -> np.ndarray:
-    return np.outer(VOLATILITIES, VOLATILITIES) * CORRELATION
+def min_volatility_weights(returns: pd.DataFrame) -> np.ndarray:
+    covariance = returns.cov().to_numpy() * 12
+    n_assets = covariance.shape[0]
 
+    def volatility(weights: np.ndarray) -> float:
+        return float(np.sqrt(weights @ covariance @ weights))
 
-def portfolio_metrics(weights: np.ndarray, covariance: np.ndarray) -> dict[str, float]:
-    expected_return = float(weights @ EXPECTED_RETURNS)
-    volatility = float(np.sqrt(weights @ covariance @ weights))
-    sharpe = (expected_return - RISK_FREE) / volatility
-    return {"expected_return": expected_return, "volatility": volatility, "sharpe": sharpe}
-
-
-def optimize(objective, covariance: np.ndarray) -> np.ndarray:
-    count = len(ASSETS)
     result = minimize(
-        objective,
-        np.repeat(1 / count, count),
+        volatility,
+        np.repeat(1 / n_assets, n_assets),
         method="SLSQP",
-        bounds=[(0, MAX_WEIGHT)] * count,
-        constraints=[{"type": "eq", "fun": lambda w: np.sum(w) - 1}],
+        bounds=[(0.0, CAP)] * n_assets,
+        constraints={"type": "eq", "fun": lambda weights: weights.sum() - 1},
+        options={"ftol": 1e-12, "maxiter": 2_000},
     )
     if not result.success:
         raise RuntimeError(result.message)
     return result.x
 
 
-def main() -> None:
-    covariance = covariance_matrix()
-    equal = np.repeat(1 / len(ASSETS), len(ASSETS))
-    min_vol = optimize(lambda w: portfolio_metrics(w, covariance)["volatility"], covariance)
-    max_sharpe = optimize(lambda w: -portfolio_metrics(w, covariance)["sharpe"], covariance)
-
-    output = {
-        "status": "illustrative_client_scenario",
-        "assumptions": {
-            "assets": ASSETS,
-            "expected_returns": EXPECTED_RETURNS.tolist(),
-            "volatilities": VOLATILITIES.tolist(),
-            "risk_free_rate": RISK_FREE,
-            "maximum_asset_weight": MAX_WEIGHT,
-        },
-        "portfolios": {},
+def annualized_metrics(returns: pd.Series, benchmark: pd.Series) -> dict[str, float]:
+    aligned = pd.concat([returns.rename("portfolio"), benchmark.rename("benchmark")], axis=1).dropna()
+    portfolio = aligned["portfolio"]
+    active = portfolio - aligned["benchmark"]
+    years = len(portfolio) / 12
+    annual_return = (1 + portfolio).prod() ** (1 / years) - 1
+    annual_volatility = portfolio.std(ddof=1) * np.sqrt(12)
+    tracking_error = active.std(ddof=1) * np.sqrt(12)
+    information_ratio = active.mean() * 12 / tracking_error
+    wealth = (1 + portfolio).cumprod()
+    max_drawdown = (wealth / wealth.cummax() - 1).min()
+    return {
+        "observations": len(portfolio),
+        "annual_return": annual_return,
+        "annual_volatility": annual_volatility,
+        "tracking_error": tracking_error,
+        "information_ratio": information_ratio,
+        "max_drawdown": max_drawdown,
     }
-    for name, weights in {"equal_weight": equal, "minimum_volatility": min_vol, "maximum_sharpe": max_sharpe}.items():
-        output["portfolios"][name] = {
-            "weights": dict(zip(ASSETS, map(float, weights))),
-            **portfolio_metrics(weights, covariance),
-        }
 
-    output_path = ROOT / "reference_results.json"
-    output_path.write_text(json.dumps(output, indent=2))
-    print(json.dumps(output, indent=2))
+
+def run() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, float]]:
+    prices = pd.read_csv(DATA, parse_dates=["Date"], index_col="Date")[ASSETS]
+    returns = prices.pct_change(fill_method=None).dropna()
+    portfolio_returns: list[pd.Series] = []
+    weight_rows: list[pd.Series] = []
+    turnovers: list[float] = []
+    previous = np.zeros(len(ASSETS))
+
+    for start in range(TRAIN_MONTHS, len(returns), REBALANCE_MONTHS):
+        train = returns.iloc[start - TRAIN_MONTHS : start]
+        test = returns.iloc[start : start + REBALANCE_MONTHS]
+        if test.empty:
+            continue
+        weights = min_volatility_weights(train)
+        turnover = float(np.abs(weights - previous).sum())
+        period = test @ weights
+        period.iloc[0] -= turnover * TRADING_COST
+        portfolio_returns.append(period)
+        weight_rows.append(pd.Series(weights, index=ASSETS, name=test.index[0]))
+        turnovers.append(turnover)
+        previous = weights
+
+    portfolio = pd.concat(portfolio_returns).sort_index().rename("portfolio_return")
+    weights = pd.DataFrame(weight_rows)
+    metrics = annualized_metrics(portfolio, returns.loc[portfolio.index, "LQD"])
+    metrics["annual_turnover"] = float(np.mean(turnovers))
+    metrics["annual_transaction_cost"] = metrics["annual_turnover"] * TRADING_COST
+    metrics["history_start"] = str(prices.index.min().date())
+    metrics["history_end"] = str(prices.index.max().date())
+    metrics["history_months"] = len(prices)
+
+    OUTPUT.mkdir(exist_ok=True)
+    portfolio.to_csv(OUTPUT / "out_of_sample_returns.csv")
+    weights.to_csv(OUTPUT / "rebalance_weights.csv", index_label="Date")
+    pd.Series(metrics, name="value").to_csv(OUTPUT / "summary_metrics.csv")
+    return prices, weights, metrics
 
 
 if __name__ == "__main__":
-    main()
+    _, _, summary = run()
+    for key, value in summary.items():
+        print(f"{key}: {value}")
