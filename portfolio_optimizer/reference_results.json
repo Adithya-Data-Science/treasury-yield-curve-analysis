@@ -1,0 +1,66 @@
+{
+  "status": "illustrative_client_scenario",
+  "assumptions": {
+    "assets": [
+      "Short Treasury",
+      "Intermediate Treasury",
+      "TIPS",
+      "IG Credit",
+      "High Yield"
+    ],
+    "expected_returns": [
+      0.035,
+      0.045,
+      0.043,
+      0.055,
+      0.068
+    ],
+    "volatilities": [
+      0.025,
+      0.06,
+      0.055,
+      0.075,
+      0.12
+    ],
+    "risk_free_rate": 0.03,
+    "maximum_asset_weight": 0.45
+  },
+  "portfolios": {
+    "equal_weight": {
+      "weights": {
+        "Short Treasury": 0.2,
+        "Intermediate Treasury": 0.2,
+        "TIPS": 0.2,
+        "IG Credit": 0.2,
+        "High Yield": 0.2
+      },
+      "expected_return": 0.0492,
+      "volatility": 0.04807390144350675,
+      "sharpe": 0.3993851013436587
+    },
+    "minimum_volatility": {
+      "weights": {
+        "Short Treasury": 0.45,
+        "Intermediate Treasury": 0.08242539789011559,
+        "TIPS": 0.33862111437613307,
+        "IG Credit": 0.07528622752042798,
+        "High Yield": 0.05366726021332326
+      },
+      "expected_return": 0.04180996703135845,
+      "volatility": 0.034076819206563476,
+      "sharpe": 0.3465689376631652
+    },
+    "maximum_sharpe": {
+      "weights": {
+        "Short Treasury": 0.34225811494757363,
+        "Intermediate Treasury": 0.09010641893491969,
+        "TIPS": 0.2158771319790552,
+        "IG Credit": 0.15031498534805543,
+        "High Yield": 0.2014433487903961
+      },
+      "expected_return": 0.047282011462225826,
+      "volatility": 0.04303263006991315,
+      "sharpe": 0.4016024917405358
+    }
+  }
+}
