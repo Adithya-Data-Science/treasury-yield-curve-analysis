@@ -1,34 +1,44 @@
-# Fixed-Income Portfolio Optimization and Client Analytics
+# Historical Fixed-Income ETF Portfolio and Benchmark Analytics
 
-This module constructs transparent allocations across Short Treasury, Intermediate Treasury, TIPS, investment-grade credit and high yield. It compares equal-weight, minimum-volatility and maximum-Sharpe portfolios subject to long-only weights, full investment and a 45% maximum position.
+This project constructs and evaluates a long-only minimum-volatility portfolio across five investable U.S.-listed bond ETFs: **SHY, IEF, TLT, LQD, and HYG**. LQD is used as the investment-grade corporate-bond benchmark.
 
-## Interpretation boundary
+## Research design
 
-The inputs are an **illustrative client scenario**, not estimated historical performance and not an investment recommendation. Expected returns, volatilities and correlations are visible in the code and output so a reviewer can audit every assumption.
+- Static adjusted-price snapshot covering January 2010 through December 2025
+- Monthly total returns derived from adjusted prices
+- 60-month trailing covariance-estimation window
+- Annual portfolio rebalancing with a 45% per-ETF concentration cap
+- Fully out-of-sample evaluation after each estimation window
+- Turnover-based transaction costs of 10 basis points
+- Benchmark-relative tracking error and information ratio versus LQD
+
+The design deliberately separates every training window from its following holding period. Results are a historical research exercise, not expected future performance or investment advice.
 
 ## Reproduce
 
 ```bash
-pip install numpy scipy
-python portfolio_optimizer.py
-python -m unittest test_portfolio_optimizer.py
+python -m pip install -r requirements.txt
+python analysis.py
+pytest -q
 ```
 
-The run recreates `reference_results.json`, including weights, expected return, volatility and Sharpe ratio for every allocation.
+Generated files are written to `outputs/`:
 
-## Workflow
+- `summary_metrics.csv`
+- `out_of_sample_returns.csv`
+- `rebalance_weights.csv`
 
-1. Define five fixed-income exposures and explicit capital-market assumptions.
-2. Convert volatility and correlation assumptions into a covariance matrix.
-3. Apply long-only, fully invested and 45% concentration constraints.
-4. Solve minimum-volatility and maximum-Sharpe allocations with SLSQP.
-5. Compare both optimized portfolios with an equal-weight reference.
-6. Validate covariance and allocation constraints with unit tests.
+## Data provenance
 
-## Client use
+The committed monthly snapshot was downloaded from Yahoo Finance's chart endpoint on September 9, 2026. Adjusted prices incorporate distributions and corporate actions. The snapshot is committed to make the analysis reproducible and to avoid changing results when an upstream service revises its history.
 
-The framework makes assumptions and tradeoffs visible for an asset-allocation discussion. A production study should replace the illustrative inputs with approved capital-market assumptions, add duration, spread, liquidity and liability constraints, and stress the solution across inflation and rate scenarios.
+## Verified out-of-sample results
+
+Across 131 out-of-sample monthly observations (February 2015-December 2025), the minimum-volatility strategy produced a 2.02% annualized return and 3.65% annualized volatility. Relative to LQD, it recorded 4.84% tracking error and a -0.14 information ratio. Average annual turnover was 14.6%, corresponding to approximately 0.01% annual modeled transaction cost at 10 basis points.
 
 ## Limitations
 
-Mean-variance optimization is sensitive to expected returns and covariance estimates. The scenario omits estimation uncertainty, transaction costs, taxes, liquidity, tail dependence and regime shifts.
+- ETF adjusted prices are investable proxies, not holdings-level bond returns.
+- Optimization estimates remain sensitive to the selected window and universe.
+- LQD is a practical benchmark for this study, not a universal benchmark for every mandate.
+- Taxes, bid-ask spreads, market impact, and fund-management fees are not modeled separately.
